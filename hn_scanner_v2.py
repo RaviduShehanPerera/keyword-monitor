@@ -66,3 +66,24 @@ for story,relevance_score,matched_categories in matches:
     print(f"HN Score: {story.get('score', 0)}")
     print(f"HN Link: https://news.ycombinator.com/item?id={story['id']}")
     print("---")
+
+import csv
+from datetime import datetime 
+
+filename = f"hn_results_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+
+with open(filename,"w", newline="") as file:
+    writer =csv.writer(file)
+    writer.writerow(["relevance_score","title","url","hn_score","categories","hn_link","scan_date"])
+    for story, relevance_score, matched_categories in matches:
+        writer.writerow([
+            relevance_score,
+            story.get("title",""),
+            story.get("url","No Url"),
+            story.get("score",0),
+            ",".join(matched_categories),
+            f"https://news.ycombinator.com/item?id={story['id']}",
+            datetime.now().strftime("%Y-%m-%d %H:%M")
+        ])
+print(f"\nResults saved to {filename}")
+
