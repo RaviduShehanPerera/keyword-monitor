@@ -2,8 +2,10 @@ import requests
 import csv
 import resend 
 import os
+import feedparser
 from datetime import datetime
 from dotenv import load_dotenv
+
 
 load_dotenv()
 resend.api_key = os.getenv("RESEND_API_KEY")
@@ -40,6 +42,7 @@ response = requests.get("https://hacker-news.firebaseio.com/v0/newstories.json")
 story_ids = response.json()[:50]
 
 matches =[]
+seen_titles = set()
 for story_id in story_ids:
     response = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json")
     story = response.json()    
@@ -58,11 +61,47 @@ for story_id in story_ids:
                 break
 
     if matched_categories:
-        relevance_score = calculated_score(story,matched_categories)
-        matches.append((story,relevance_score,matched_categories))
+        if story.get ("title","").lower() not in seen_titles:
+            seen_titles.add(story.get("title","").lower())
+            story["source"]="Hacker News"
+            relevance_score = calculated_score(story,matched_categories)
+            matches.append((story,relevance_score,matched_categories))
 
 matches.sort(key=lambda x:x[1], reverse = True)
 print(f"found {len(matches)} matches")
+
+#---SCAN REDDIT---
+subreddits = ["Startups","SaaS","smallbusiness","Entrepreneur","indiehackers"]
+
+print("Scanning Reddit...")
+for subreddit in subreddits:
+    feed = feedparser.parse(f"https://www.reddit.com/r/{subreddit}/new.rss")
+
+    for entry in feed.entries:
+        title= entry.title.lower()
+
+        matched_categories =[]
+        for category,words in keywords.items():
+            for word in words:
+                if word in title:
+                    matched_categories.append(category)
+                    break
+
+        if matched_categories:
+            if entry.title.lower() not in seen_titles:
+                seen_titles.add(entry.title.lower())
+                story={
+                    "title":entry.title,
+                    "url":entry.link,
+                    "id":entry.link,
+                    "score":0,
+                    "source":"Reddit"
+                }
+                relevance_score = calculated_score(story,matched_categories)
+                matches.append((story,relevance_score,matched_categories))
+
+matches.sort(key=lambda x:x[1], reverse=True)
+print(f"Total matches (HN + Reddit): {len(matches)}") 
 
 #---BUILD EMAIL---
 def build_email_html(matches):
@@ -76,7 +115,11 @@ def build_email_html(matches):
     for story,relevance_score,matched_categories in matches:
         title =story.get("title","No title")
         url =story.get("url","")
-        hn_link = f"https://news.ycombinator.com/item?id={story['id']}"
+        if str(story['id']).startswith("http"):
+            hn_link=story['id']
+        else:
+            hn_link = f"https://news.ycombinator.com/item?id={story['id']}"
+            
         hn_score = story.get("score",0)
         categories =",".join(matched_categories)
 
@@ -84,10 +127,11 @@ def build_email_html(matches):
         html += f"<h3>[Score: {relevance_score}] {title}</h3>"
         html += f"<p><strong>Categories:</strong> {categories}</p>"
         html +=f"<p><strong>HN Score:</strong> {hn_score}</p>"
+        html += f"<p><strong>Source:</strong> {story.get('source', 'Unknown')}</p>"
         if url:
-            html +=f"<p><a href='{url}'>Article Link</a> | <a href='{hn_link}'>HN Discussion</a></p>"
+            html +=f"<p><a href='{url}'>Article Link</a> | <a href='{hn_link}'>Discussion</a></p>"
         else:
-            html += f"<p><a href='{hn_link}'>View on Hacker News</a></p>"
+            html += f"<p><a href='{hn_link}'>View Discussion</a></p>"
         html +=f"</div><hr>" 
     return html       
 
