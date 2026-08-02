@@ -13,14 +13,14 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 
 #---KEYWORDS---
 keywords = {
-    "looking_for": ["looking for", "recommend", "suggestion", "alternative to", 
+    "looking_for": ["looking for", "recommend", "suggestion", "alternative to",
                      "what do you use", "anyone know", "best way to"],
-    "product": ["order tracker", "order tracking", "order management", 
-                "whatsapp order", "whatsapp business", "inventory management",
-                "order system", "delivery tracking", "shipment tracking"],
-    "pain_point": ["frustrated", "struggling", "problem with", "hate", 
-                   "expensive", "too many orders", "lost orders", 
-                   "tracking nightmare", "manual orders"]
+    "product": ["cat toy", "cat toys", "interactive cat toy", "automatic cat toy",
+                "dog toy", "dog toys", "indestructible dog toy", "chew toy",
+                "pet toy", "pet toys", "durable dog toy", "smart cat toy"],
+    "pain_point": ["frustrated", "bored cat", "destructive dog",
+                   "breaks everything", "chewed through", "destroyed",
+                   "keeps breaking", "nothing lasts"]
 }
 
 #---SCORING---
@@ -117,14 +117,16 @@ for story_id in story_ids:
 print(f"found {len(matches)} HN matches")
 
 #---SCAN SUBREDDIT---
-subreddits = ["startups", "SaaS", "smallbusiness", "Entrepreneur", 
-              "indiehackers", "ecommerce", "shopify", "smallbusiness",
-              "WhatsApp", "supplychain","WooCommerce","dropship", "FulfillmentByAmazon", 
-              "Etsy", "OnlineRetail","smallbusinessindia"]
+subreddits = ["cats", "dogs", "pets", "CatAdvice", "DogAdvice",
+              "petcare", "BuyCatStuff", "DogCare"]
 
 print("Scanning subreddit...")
 for subreddit in subreddits:
+    
     feed = feedparser.parse(f"https://www.reddit.com/r/{subreddit}/new.rss")
+    print(f"  r/{subreddit}: {len(feed.entries)} posts")
+    for entry in feed.entries[:3]:
+        print(f"    - {entry.title}")
 
     for entry in feed.entries:
         title= entry.title.lower()
@@ -148,7 +150,7 @@ for subreddit in subreddits:
                 }
                 relevance_score = calculated_score(story,matched_categories)
                 matches.append((story,relevance_score,matched_categories))
-
+"""
 #---SEARCH ALL OF REDDIT---
 search_terms = ["order tracking", "order management", "whatsapp orders",
                 "delivery tracking", "shipment tracking", "track orders",
@@ -188,7 +190,7 @@ for term in search_terms:
             }
             relevance_score = calculated_score(story, matched_categories)
             matches.append((story, relevance_score, matched_categories))
-
+"""
 # --- SCAN PRODUCT HUNT ---
 print("Scanning Product Hunt...")
 ph_feed = feedparser.parse("https://www.producthunt.com/feed")
@@ -217,7 +219,7 @@ for entry in ph_feed.entries:
             }
             relevance_score = calculated_score(story, matched_categories)
             matches.append((story, relevance_score, matched_categories))
-
+"""
 # --- SCAN DEV.TO ---
 print("Scanning Dev.to...")
 for term in ["order tracking", "order management", "ecommerce tools"]:
@@ -247,11 +249,11 @@ for term in ["order tracking", "order management", "ecommerce tools"]:
                 }
                 relevance_score = calculated_score(story, matched_categories)
                 matches.append((story, relevance_score, matched_categories))
-
+"""
 matches.sort(key=lambda x:x[1], reverse=True)
 print(f"Total matches : {len(matches)}") 
-matches = [(story,score,cats)for story,score,cats in matches if score>=6]
-print(f"Quality leads: {len(matches)}")
+#matches = [(story,score,cats)for story,score,cats in matches if score>=6]
+#print(f"Quality leads: {len(matches)}")
 
 #---SEND EMAIL---
 if not matches:
